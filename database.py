@@ -2,20 +2,17 @@ import sqlite3
 import datetime
 import os
 
-# Для Railway используем папку /data, которая примонтирована как Volume
-# Если её нет, используем текущую папку (для локального теста)
-DB_PATH = os.getenv('RAILWAY_VOLUME_PATH', '/data')
-if not os.path.exists(DB_PATH):
-    DB_PATH = '.'
-
-DB_NAME = os.path.join(DB_PATH, 'salon.db')
+# Простое локальное хранилище — в той же папке, где лежит бот
+DB_NAME = 'salon.db'
 
 def init_db():
+    """Создаёт таблицы, если их нет"""
     db_exists = os.path.exists(DB_NAME)
     
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     
+    # Таблица пользователей
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -26,6 +23,7 @@ def init_db():
         )
     ''')
     
+    # Таблица записей
     cur.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,11 +41,12 @@ def init_db():
     conn.close()
     
     if not db_exists:
-        print(f"✅ База данных создана: {DB_NAME}")
+        print(f"✅ Новая база данных создана: {DB_NAME}")
     else:
         print(f"✅ База данных подключена: {DB_NAME}")
 
 def add_user(user_id, username, full_name):
+    """Добавляет нового пользователя или игнорирует, если уже есть"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('''
@@ -56,8 +55,10 @@ def add_user(user_id, username, full_name):
     ''', (user_id, username, full_name, datetime.datetime.now().isoformat()))
     conn.commit()
     conn.close()
+    print(f"👤 Пользователь добавлен: @{username}")
 
 def save_booking(user_id, service, date, time):
+    """Сохраняет запись в БД и возвращает её ID"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('''
@@ -67,9 +68,11 @@ def save_booking(user_id, service, date, time):
     conn.commit()
     booking_id = cur.lastrowid
     conn.close()
+    print(f"📅 Запись #{booking_id} сохранена")
     return booking_id
 
 def get_user_phone(user_id):
+    """Возвращает телефон пользователя или None"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('SELECT phone FROM users WHERE user_id=?', (user_id,))
@@ -78,13 +81,16 @@ def get_user_phone(user_id):
     return row[0] if row else None
 
 def update_user_phone(user_id, phone):
+    """Обновляет телефон пользователя"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('UPDATE users SET phone=? WHERE user_id=?', (phone, user_id))
     conn.commit()
     conn.close()
+    print(f"📞 Телефон пользователя {user_id} обновлён")
 
 def get_all_bookings():
+    """Для админа: все записи с данными клиентов (включая user_id)"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('''
@@ -96,17 +102,22 @@ def get_all_bookings():
     ''')
     rows = cur.fetchall()
     conn.close()
+    print(f"📋 Загружено записей: {len(rows)}")
     return rows
 
 def get_all_users():
+    """Возвращает список всех user_id"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('SELECT user_id FROM users')
     rows = cur.fetchall()
     conn.close()
-    return [row[0] for row in rows]
+    user_ids = [row[0] for row in rows]
+    print(f"👥 Загружено пользователей: {len(user_ids)}")
+    return user_ids
 
 def get_stats():
+    """Возвращает статистику по записям и пользователям"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     
@@ -136,15 +147,19 @@ def get_stats():
     }
 
 def update_booking_status(booking_id, status):
+    """Обновляет статус записи (pending/confirmed/cancelled)"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('UPDATE bookings SET status=? WHERE id=?', (status, booking_id))
     conn.commit()
     conn.close()
+    print(f"✏️ Статус записи #{booking_id} изменён на {status}")
 
 def delete_booking(booking_id):
+    """Удаляет запись из базы данных"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('DELETE FROM bookings WHERE id=?', (booking_id,))
     conn.commit()
     conn.close()
+    print(f"🗑 Запись #{booking_id} удалена")
