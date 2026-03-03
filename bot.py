@@ -1,61 +1,121 @@
 import asyncio
 import logging
 import os
-from aiogram import Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
-from config import ADMIN_ID
-from bot_instance import bot, set_admin_id
-from database import init_db, add_user, get_all_bookings
-from keep_alive import keep_alive
+import sys
+from flask import Flask
+from threading import Thread
 
-# Запускаем веб-сервер для Railway
-keep_alive()
+# ================== НАСТРОЙКА ЛОГИРОВАНИЯ ==================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-set_admin_id(ADMIN_ID)
+print("=" * 60)
+print("🚀 ЗАПУСК БОТА НА RAILWAY")
+print("=" * 60)
 
-# Инициализация базы данных
-print("🔄 Инициализация базы данных...")
-init_db()
+# ================== FLASK ДЛЯ HEALTHCHECK ==================
+app = Flask(__name__)
 
-# Добавляем тестовые данные, если база пустая
-from database import get_all_users, get_all_bookings
-if len(get_all_users()) == 0:
-    print("🔄 Добавляем тестового администратора...")
-    add_user(ADMIN_ID, "admin", "Administrator")
-    print("✅ Тестовый администратор добавлен")
+@app.route('/')
+def home():
+    return "Bot is running! 🚀"
 
-if len(get_all_bookings()) == 0:
-    print("🔄 Добавляем тестовую запись...")
-    from database import save_booking
-    save_booking(ADMIN_ID, "💇 Тестовая запись", "15.03.2026", "14:00")
-    print("✅ Тестовая запись добавлена")
+@app.route('/health')
+def health():
+    return "OK", 200
 
-logging.basicConfig(level=logging.INFO)
+def run_flask():
+    port = int(os.environ.get('PORT', 8080))
+    logger.info(f"🌐 Запуск Flask на порту {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
 
-dp = Dispatcher(storage=MemoryStorage())
+# Запускаем Flask в отдельном потоке
+flask_thread = Thread(target=run_flask, daemon=True)
+flask_thread.start()
+logger.info("✅ Flask сервер запущен")
 
-from handlers import start, booking, admin
+# ================== ИМПОРТЫ AIOGRAM ==================
+try:
+    from aiogram import Bot, Dispatcher
+    from aiogram.types import Message
+    from aiogram.filters import Command
+    from aiogram.fsm.storage.memory import MemoryStorage
+    logger.info("✅ aiogram импортирован")
+except Exception as e:
+    logger.error(f"❌ Ошибка импорта aiogram: {e}")
+    sys.exit(1)
 
-dp.include_router(start.router)
-dp.include_router(booking.router)
-dp.include_router(admin.router)
+# ================== ПРОВЕРКА ПЕРЕМЕННЫХ ==================
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    logger.error("❌ BOT_TOKEN не найден в переменных окружения!")
+    sys.exit(1)
 
-async def main():
-    print("=" * 50)
-    print("🚀 БОТ ЗАПУЩЕН НА RAILWAY")
-    print("=" * 50)
-    print(f"📊 ID администратора: {ADMIN_ID}")
-    print(f"📁 Текущая директория: {os.getcwd()}")
-    
-    # Проверяем наличие базы
-    if os.path.exists('salon.db'):
-        size = os.path.getsize('salon.db')
-        print(f"✅ Файл базы данных найден, размер: {size} байт")
+ADMIN_ID = os.getenv("ADMIN_ID")
+if not ADMIN_ID:
+    logger.error("❌ ADMIN_ID не найден в переменных окружения!")
+    sys.exit(1)
+
+try:
+    ADMIN_ID = int(ADMIN_ID)
+    logger.info(f"✅ ADMIN_ID: {ADMIN_ID}")
+except ValueError:
+    logger.error(f"❌ ADMIN_ID должен быть числом, получено: {ADMIN_ID}")
+    sys.exit(1)
+
+logger.info(f"✅ BOT_TOKEN: {BOT_TOKEN[:10]}...")
+
+# ================== СОЗДАНИЕ БОТА ==================
+try:
+    bot = Bot(token=BOT_TOKEN)
+    dp = Dispatcher(storage=MemoryStorage())
+    logger.info("✅ Бот и диспетчер созданы")
+except Exception as e:
+    logger.error(f"❌ Ошибка создания бота: {e}")
+    sys.exit(1)
+
+# ================== ОБРАБОТЧИКИ ==================
+@dp.message(Command("start"))
+async def cmd_start(message: Message):
+    await message.answer(
+        f"👋 Привет, {message.from_user.first_name}!\n"
+        f"Я бот для салона красоты.\n"
+        f"🆔 Твой ID: {message.from_user.id}"
+    )
+
+@dp.message(Command("admin"))
+async def cmd_admin(message: Message):
+    if message.from_user.id == ADMIN_ID:
+        await message.answer("👑 Ты администратор!")
     else:
-        print(f"❌ Файл базы данных НЕ найден!")
-    
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+        await message.answer("⛔ У тебя нет прав администратора.")
+
+@dp.message()
+async def echo_all(message: Message):
+    await message.answer(f"Ты написал: {message.text}")
+
+# ================== ЗАПУСК ==================
+async def main():
+    logger.info("🚀 Запуск polling...")
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("✅ Вебхук удалён")
+        await dp.start_polling(bot)
+    except Exception as e:
+        logger.error(f"❌ Ошибка в polling: {e}")
+        raise
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("👋 Бот остановлен")
+    except Exception as e:
+        logger.error(f"❌ Фатальная ошибка: {e}")
+        # Держим процесс живым для Flask
+        import time
+        while True:
+            time.sleep(10)
