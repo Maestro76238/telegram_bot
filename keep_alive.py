@@ -1,12 +1,17 @@
 from flask import Flask
 from threading import Thread
 import os
+import logging
+
+# Настройка логирования для Flask
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Бот работает! 🚀"
+    return "Bot is running! 🚀"
 
 @app.route('/health')
 def health():
@@ -14,10 +19,11 @@ def health():
 
 def run():
     port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    print(f"🌐 Starting web server on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 def keep_alive():
     t = Thread(target=run)
     t.daemon = True
     t.start()
-    print(f"✅ Веб-сервер запущен на порту {os.environ.get('PORT', 8080)}")
+    print("✅ Web server thread started")

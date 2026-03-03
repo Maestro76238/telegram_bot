@@ -2,6 +2,8 @@ import sqlite3
 import datetime
 import os
 
+# Для Railway используем папку /data, которая примонтирована как Volume
+# Если её нет, используем текущую папку (для локального теста)
 DB_PATH = os.getenv('RAILWAY_VOLUME_PATH', '/data')
 if not os.path.exists(DB_PATH):
     DB_PATH = '.'

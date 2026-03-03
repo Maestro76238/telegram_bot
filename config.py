@@ -1,21 +1,27 @@
 import os
+import sys
+
+print("🔧 Loading configuration...")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 
-print("🔧 Загрузка конфигурации...")
+print(f"BOT_TOKEN exists: {'yes' if BOT_TOKEN else 'no'}")
+print(f"ADMIN_ID exists: {'yes' if ADMIN_ID else 'no'}")
 
 if not BOT_TOKEN:
-    raise ValueError("❌ Токен не найден! Добавь BOT_TOKEN в переменные окружения Railway")
+    print("❌ CRITICAL: BOT_TOKEN is missing!")
+    sys.exit(1)
 
 if not ADMIN_ID:
-    raise ValueError("❌ ADMIN_ID не найден! Добавь ADMIN_ID в переменные окружения Railway")
+    print("❌ CRITICAL: ADMIN_ID is missing!")
+    sys.exit(1)
 
 try:
     ADMIN_ID = int(ADMIN_ID)
+    print(f"✅ Admin ID: {ADMIN_ID}")
 except ValueError:
-    raise ValueError("❌ ADMIN_ID должен быть числом")
+    print(f"❌ ADMIN_ID must be a number, got: {ADMIN_ID}")
+    sys.exit(1)
 
-print("✅ Конфигурация загружена")
-print(f"Токен бота: {BOT_TOKEN[:10]}...")
-print(f"Admin ID: {ADMIN_ID}")
+print("✅ Configuration loaded successfully")

@@ -40,18 +40,24 @@ async def show_bookings_list(callback: CallbackQuery):
     admin_pages[callback.from_user.id] = 0
     
     if not bookings:
-        await callback.message.edit_text(
-            "📭 Записей пока нет.",
-            reply_markup=admin_keyboard()
-        )
+        if callback.message.text != "📭 Записей пока нет.":
+            await callback.message.edit_text(
+                "📭 Записей пока нет.",
+                reply_markup=admin_keyboard()
+            )
         await callback.answer()
         return
     
-    await callback.message.edit_text(
-        "📋 **Список записей:**\n\n"
-        "Выберите запись для управления:",
-        reply_markup=admin_bookings_keyboard(bookings, 0)
-    )
+    new_text = "📋 **Список записей:**\n\nВыберите запись для управления:"
+    
+    if callback.message.text != new_text:
+        await callback.message.edit_text(
+            new_text,
+            reply_markup=admin_bookings_keyboard(bookings, 0)
+        )
+    else:
+        await callback.answer()
+    
     await callback.answer()
 
 @router.callback_query(F.data.startswith("bookings_page_"))
@@ -66,8 +72,7 @@ async def change_page(callback: CallbackQuery):
     bookings = get_all_bookings()
     
     await callback.message.edit_text(
-        "📋 **Список записей:**\n\n"
-        "Выберите запись для управления:",
+        "📋 **Список записей:**\n\nВыберите запись для управления:",
         reply_markup=admin_bookings_keyboard(bookings, page)
     )
     await callback.answer()
@@ -107,10 +112,14 @@ async def view_booking(callback: CallbackQuery):
         f"📌 **Статус:** {status_emoji} {booking[6]}\n"
     )
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=admin_booking_action_keyboard(booking_id, booking[6])
-    )
+    if callback.message.text != text:
+        await callback.message.edit_text(
+            text,
+            reply_markup=admin_booking_action_keyboard(booking_id, booking[6])
+        )
+    else:
+        await callback.answer()
+    
     await callback.answer()
 
 @router.callback_query(F.data.startswith("booking_confirm_"))
@@ -204,10 +213,14 @@ async def show_stats(callback: CallbackQuery):
         f"❌ Отменённых: {stats['cancelled_bookings']}\n"
     )
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=admin_keyboard()
-    )
+    if callback.message.text != text:
+        await callback.message.edit_text(
+            text,
+            reply_markup=admin_keyboard()
+        )
+    else:
+        await callback.answer()
+    
     await callback.answer()
 
 @router.callback_query(F.data == "admin_broadcast")
