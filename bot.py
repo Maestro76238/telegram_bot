@@ -71,8 +71,11 @@ logger.info("✅ Бот создан")
 DB_NAME = 'salon.db'
 
 def init_db():
+    """Создаёт таблицы, если их нет"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
+    
+    # Таблица пользователей
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -82,6 +85,8 @@ def init_db():
             registered_at TEXT
         )
     ''')
+    
+    # Таблица записей
     cur.execute('''
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,11 +99,13 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(user_id)
         )
     ''')
+    
     conn.commit()
     conn.close()
     logger.info("✅ База данных инициализирована")
 
 def add_user(user_id, username, full_name):
+    """Добавляет нового пользователя"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('''
@@ -109,6 +116,7 @@ def add_user(user_id, username, full_name):
     conn.close()
 
 def save_booking(user_id, service, date, time):
+    """Сохраняет запись в БД и возвращает её ID"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('''
@@ -121,6 +129,7 @@ def save_booking(user_id, service, date, time):
     return booking_id
 
 def get_user_phone(user_id):
+    """Возвращает телефон пользователя или None"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('SELECT phone FROM users WHERE user_id=?', (user_id,))
@@ -129,6 +138,7 @@ def get_user_phone(user_id):
     return row[0] if row else None
 
 def update_user_phone(user_id, phone):
+    """Обновляет телефон пользователя"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('UPDATE users SET phone=? WHERE user_id=?', (phone, user_id))
@@ -136,20 +146,40 @@ def update_user_phone(user_id, phone):
     conn.close()
 
 def get_all_bookings():
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute('''
-        SELECT bookings.id, users.full_name, users.phone, bookings.service, 
-               bookings.date, bookings.time, bookings.status, users.user_id
-        FROM bookings
-        JOIN users ON bookings.user_id = users.user_id
-        ORDER BY bookings.created_at DESC
-    ''')
-    rows = cur.fetchall()
-    conn.close()
-    return rows
+    """Для админа: все записи с данными клиентов (включая user_id)"""
+    try:
+        print("🔍 [DB] get_all_bookings вызвана")
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        
+        # Проверка наличия данных
+        cur.execute('SELECT COUNT(*) FROM bookings')
+        bookings_count = cur.fetchone()[0]
+        print(f"🔍 [DB] В таблице bookings: {bookings_count} записей")
+        
+        cur.execute('SELECT COUNT(*) FROM users')
+        users_count = cur.fetchone()[0]
+        print(f"🔍 [DB] В таблице users: {users_count} пользователей")
+        
+        # Основной запрос
+        cur.execute('''
+            SELECT bookings.id, users.full_name, users.phone, bookings.service, 
+                   bookings.date, bookings.time, bookings.status, users.user_id
+            FROM bookings
+            JOIN users ON bookings.user_id = users.user_id
+            ORDER BY bookings.created_at DESC
+        ''')
+        rows = cur.fetchall()
+        conn.close()
+        
+        print(f"🔍 [DB] Возвращено {len(rows)} записей")
+        return rows
+    except Exception as e:
+        print(f"❌ [DB] Ошибка: {e}")
+        return []
 
 def get_all_users():
+    """Возвращает список всех user_id"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('SELECT user_id FROM users')
@@ -158,28 +188,47 @@ def get_all_users():
     return [row[0] for row in rows]
 
 def get_stats():
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute('SELECT COUNT(*) FROM users')
-    total_users = cur.fetchone()[0]
-    cur.execute('SELECT COUNT(*) FROM bookings')
-    total_bookings = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM bookings WHERE status='pending'")
-    pending = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM bookings WHERE status='confirmed'")
-    confirmed = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM bookings WHERE status='cancelled'")
-    cancelled = cur.fetchone()[0]
-    conn.close()
-    return {
-        'total_users': total_users,
-        'total_bookings': total_bookings,
-        'pending_bookings': pending,
-        'confirmed_bookings': confirmed,
-        'cancelled_bookings': cancelled
-    }
+    """Возвращает статистику по записям и пользователям"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        
+        cur.execute('SELECT COUNT(*) FROM users')
+        total_users = cur.fetchone()[0]
+        
+        cur.execute('SELECT COUNT(*) FROM bookings')
+        total_bookings = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM bookings WHERE status='pending'")
+        pending = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM bookings WHERE status='confirmed'")
+        confirmed = cur.fetchone()[0]
+        
+        cur.execute("SELECT COUNT(*) FROM bookings WHERE status='cancelled'")
+        cancelled = cur.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'total_users': total_users,
+            'total_bookings': total_bookings,
+            'pending_bookings': pending,
+            'confirmed_bookings': confirmed,
+            'cancelled_bookings': cancelled
+        }
+    except Exception as e:
+        print(f"❌ [DB] Ошибка статистики: {e}")
+        return {
+            'total_users': 0,
+            'total_bookings': 0,
+            'pending_bookings': 0,
+            'confirmed_bookings': 0,
+            'cancelled_bookings': 0
+        }
 
 def update_booking_status(booking_id, status):
+    """Обновляет статус записи"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('UPDATE bookings SET status=? WHERE id=?', (status, booking_id))
@@ -187,6 +236,7 @@ def update_booking_status(booking_id, status):
     conn.close()
 
 def delete_booking(booking_id):
+    """Удаляет запись из базы"""
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
     cur.execute('DELETE FROM bookings WHERE id=?', (booking_id,))
@@ -195,6 +245,15 @@ def delete_booking(booking_id):
 
 # Инициализация БД при старте
 init_db()
+
+# Добавим тестовые данные, если их нет
+if len(get_all_users()) == 0:
+    add_user(ADMIN_ID, "admin", "Administrator")
+    print("✅ Добавлен тестовый администратор")
+
+if len(get_all_bookings()) == 0:
+    save_booking(ADMIN_ID, "💇 Тестовая запись", "15.03.2026", "14:00")
+    print("✅ Добавлена тестовая запись")
 
 # ================== КЛАВИАТУРЫ ==================
 
@@ -489,14 +548,29 @@ async def show_bookings_list(callback: CallbackQuery):
         await callback.answer("Нет доступа", show_alert=True)
         return
     
+    print("=" * 50)
+    print("🔍 ДИАГНОСТИКА: show_bookings_list")
+    
+    # Проверяем файл базы
+    if os.path.exists('salon.db'):
+        size = os.path.getsize('salon.db')
+        print(f"✅ Файл БД существует, размер: {size} байт")
+    else:
+        print(f"❌ Файл БД НЕ существует!")
+    
+    # Получаем записи
     bookings = get_all_bookings()
+    print(f"📊 get_all_bookings вернула {len(bookings)} записей")
+    
     admin_pages[callback.from_user.id] = 0
     
     if not bookings:
+        print("📭 Записей нет, показываем пустое сообщение")
         await callback.message.edit_text("📭 Записей пока нет.", reply_markup=admin_keyboard())
         await callback.answer()
         return
     
+    print(f"📋 Показываем список с {len(bookings)} записями")
     await callback.message.edit_text(
         "📋 **Список записей:**\n\nВыберите запись для управления:",
         reply_markup=admin_bookings_keyboard(bookings, 0)
