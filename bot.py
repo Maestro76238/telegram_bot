@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import sys
+import sqlite3
+import datetime
 from flask import Flask
 from threading import Thread
 
@@ -32,10 +34,10 @@ flask_thread = Thread(target=run_flask, daemon=True)
 flask_thread.start()
 logger.info("✅ Flask сервер запущен")
 
-# ================== ИМПОРТЫ ==================
+# ================== ИМПОРТЫ AIOGRAM ==================
 try:
-    from aiogram import Bot, Dispatcher
-    from aiogram.types import Message, CallbackQuery
+    from aiogram import Bot, Dispatcher, F
+    from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
     from aiogram.filters import Command
     from aiogram.fsm.context import FSMContext
     from aiogram.fsm.state import State, StatesGroup
@@ -65,61 +67,7 @@ bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 logger.info("✅ Бот создан")
 
-# ================== КЛАВИАТУРЫ ==================
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-
-def main_menu():
-    kb = [
-        [KeyboardButton(text="📅 Записаться")],
-        [KeyboardButton(text="❓ Задать вопрос"), KeyboardButton(text="💰 Цены")],
-        [KeyboardButton(text="📞 Контакты")]
-    ]
-    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
-def services_keyboard():
-    kb = [
-        [InlineKeyboardButton(text="💇 Стрижка", callback_data="service_стрижка")],
-        [InlineKeyboardButton(text="🎨 Окрашивание", callback_data="service_окрашивание")],
-        [InlineKeyboardButton(text="💅 Маникюр", callback_data="service_маникюр")],
-        [InlineKeyboardButton(text="💆 Массаж", callback_data="service_массаж")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=kb)
-
-def time_keyboard():
-    times = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]
-    inline_kb = []
-    row = []
-    for t in times:
-        row.append(InlineKeyboardButton(text=t, callback_data=f"time_{t}"))
-        if len(row) == 3:
-            inline_kb.append(row)
-            row = []
-    if row:
-        inline_kb.append(row)
-    inline_kb.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_services")])
-    return InlineKeyboardMarkup(inline_keyboard=inline_kb)
-
-def confirm_keyboard():
-    kb = [
-        [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_booking")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_booking")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=kb)
-
-def admin_keyboard():
-    kb = [
-        [InlineKeyboardButton(text="📋 Список записей", callback_data="admin_bookings")],
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
-        [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
-        [InlineKeyboardButton(text="🔙 Выход", callback_data="admin_back")]
-    ]
-    return InlineKeyboardMarkup(inline_keyboard=kb)
-
 # ================== БАЗА ДАННЫХ ==================
-import sqlite3
-import datetime
-
 DB_NAME = 'salon.db'
 
 def init_db():
@@ -248,7 +196,110 @@ def delete_booking(booking_id):
 # Инициализация БД при старте
 init_db()
 
-# ================== СОСТОЯНИЯ ДЛЯ FSM ==================
+# ================== КЛАВИАТУРЫ ==================
+
+def main_menu():
+    kb = [
+        [KeyboardButton(text="📅 Записаться")],
+        [KeyboardButton(text="❓ Задать вопрос"), KeyboardButton(text="💰 Цены")],
+        [KeyboardButton(text="📞 Контакты")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+def services_keyboard():
+    kb = [
+        [InlineKeyboardButton(text="💇 Стрижка", callback_data="service_стрижка")],
+        [InlineKeyboardButton(text="🎨 Окрашивание", callback_data="service_окрашивание")],
+        [InlineKeyboardButton(text="💅 Маникюр", callback_data="service_маникюр")],
+        [InlineKeyboardButton(text="💆 Массаж", callback_data="service_массаж")],
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_menu")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+def time_keyboard():
+    times = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]
+    inline_kb = []
+    row = []
+    for t in times:
+        row.append(InlineKeyboardButton(text=t, callback_data=f"time_{t}"))
+        if len(row) == 3:
+            inline_kb.append(row)
+            row = []
+    if row:
+        inline_kb.append(row)
+    inline_kb.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_services")])
+    return InlineKeyboardMarkup(inline_keyboard=inline_kb)
+
+def confirm_keyboard():
+    kb = [
+        [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_booking")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_booking")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+def admin_keyboard():
+    kb = [
+        [InlineKeyboardButton(text="📋 Список записей", callback_data="admin_bookings")],
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
+        [InlineKeyboardButton(text="🔙 Выход", callback_data="admin_back")]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+def admin_bookings_keyboard(bookings, page=0):
+    items_per_page = 5
+    start = page * items_per_page
+    end = start + items_per_page
+    current_page_bookings = bookings[start:end]
+    
+    kb = []
+    for b in current_page_bookings:
+        status_emoji = {
+            'pending': '⏳',
+            'confirmed': '✅',
+            'cancelled': '❌'
+        }.get(b[6], '❓')
+        
+        name = b[1] if len(b[1]) < 20 else b[1][:17] + "..."
+        button_text = f"{status_emoji} #{b[0]} - {name} ({b[4]})"
+        kb.append([InlineKeyboardButton(text=button_text, callback_data=f"booking_view_{b[0]}")])
+    
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="⬅️ Назад", callback_data=f"bookings_page_{page-1}"))
+    if end < len(bookings):
+        nav_buttons.append(InlineKeyboardButton(text="➡️ Вперёд", callback_data=f"bookings_page_{page+1}"))
+    
+    if nav_buttons:
+        kb.append(nav_buttons)
+    
+    kb.append([InlineKeyboardButton(text="🔙 В админку", callback_data="admin_back")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+def admin_booking_action_keyboard(booking_id, current_status):
+    kb = []
+    
+    if current_status == 'pending':
+        kb.append([
+            InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"booking_confirm_{booking_id}"),
+            InlineKeyboardButton(text="❌ Отменить", callback_data=f"booking_cancel_{booking_id}")
+        ])
+    elif current_status == 'confirmed':
+        kb.append([
+            InlineKeyboardButton(text="❌ Отменить", callback_data=f"booking_cancel_{booking_id}")
+        ])
+    elif current_status == 'cancelled':
+        kb.append([
+            InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"booking_confirm_{booking_id}")
+        ])
+    
+    kb.append([InlineKeyboardButton(text="🗑 Удалить из базы", callback_data=f"booking_delete_{booking_id}")])
+    kb.append([InlineKeyboardButton(text="🔙 К списку", callback_data="admin_bookings")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+# ================== СОСТОЯНИЯ FSM ==================
 class BookingStates(StatesGroup):
     choosing_service = State()
     choosing_date = State()
@@ -266,9 +317,8 @@ admin_pages = {}
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# ================== ОБРАБОТЧИКИ ==================
+# ================== ОБРАБОТЧИКИ КЛИЕНТСКОЙ ЧАСТИ ==================
 
-# Старт
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     add_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
@@ -277,8 +327,7 @@ async def cmd_start(message: Message):
         reply_markup=main_menu()
     )
 
-# Цены
-@dp.message(lambda message: message.text == "💰 Цены")
+@dp.message(F.text == "💰 Цены")
 async def show_prices(message: Message):
     await message.answer(
         "💰 Наши цены:\n"
@@ -288,8 +337,7 @@ async def show_prices(message: Message):
         "💆 Массаж - 2500₽"
     )
 
-# Контакты
-@dp.message(lambda message: message.text == "📞 Контакты")
+@dp.message(F.text == "📞 Контакты")
 async def show_contacts(message: Message):
     await message.answer(
         "📞 Наши контакты:\n"
@@ -298,18 +346,18 @@ async def show_contacts(message: Message):
         "⏰ Время работы: ежедневно 10:00–20:00"
     )
 
-# Вопрос
-@dp.message(lambda message: message.text == "❓ Задать вопрос")
+@dp.message(F.text == "❓ Задать вопрос")
 async def question_start(message: Message):
     await message.answer("Задайте ваш вопрос, я постараюсь помочь.")
 
-# ================== ЗАПИСЬ ==================
-@dp.message(lambda message: message.text == "📅 Записаться")
+# ================== ПРОЦЕСС ЗАПИСИ ==================
+
+@dp.message(F.text == "📅 Записаться")
 async def booking_start(message: Message, state: FSMContext):
     await state.set_state(BookingStates.choosing_service)
     await message.answer("Выберите услугу:", reply_markup=services_keyboard())
 
-@dp.callback_query(lambda c: c.data.startswith("service_"))
+@dp.callback_query(F.data.startswith("service_"))
 async def choose_service(callback: CallbackQuery, state: FSMContext):
     service = callback.data.replace("service_", "")
     await state.update_data(service=service)
@@ -332,7 +380,7 @@ async def choose_date(message: Message, state: FSMContext):
     except ValueError:
         await message.answer("Неверный формат. Введите дату в формате ДД.ММ.ГГГГ:")
 
-@dp.callback_query(lambda c: c.data.startswith("time_"))
+@dp.callback_query(F.data.startswith("time_"))
 async def choose_time(callback: CallbackQuery, state: FSMContext):
     time = callback.data.replace("time_", "")
     await state.update_data(time=time)
@@ -381,7 +429,7 @@ async def ask_phone(message: Message, state: FSMContext):
         reply_markup=confirm_keyboard()
     )
 
-@dp.callback_query(lambda c: c.data == "confirm_booking")
+@dp.callback_query(F.data == "confirm_booking")
 async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     booking_id = save_booking(
@@ -400,33 +448,34 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     await bot.send_message(
         ADMIN_ID,
         f"🆕 Новая запись!\n"
-        f"Клиент: {callback.from_user.full_name}\n"
+        f"Клиент: {callback.from_user.full_name} (@{callback.from_user.username})\n"
         f"Услуга: {data['service']}\n"
         f"Дата: {data['date']} в {data['time']}\n"
         f"Телефон: {data.get('phone', 'не указан')}"
     )
     await callback.answer()
 
-@dp.callback_query(lambda c: c.data == "cancel_booking")
+@dp.callback_query(F.data == "cancel_booking")
 async def cancel_booking(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text("Запись отменена.")
     await callback.answer()
 
-@dp.callback_query(lambda c: c.data == "back_to_services")
+@dp.callback_query(F.data == "back_to_services")
 async def back_to_services(callback: CallbackQuery, state: FSMContext):
     await state.set_state(BookingStates.choosing_service)
     await callback.message.edit_text("Выберите услугу:", reply_markup=services_keyboard())
     await callback.answer()
 
-@dp.callback_query(lambda c: c.data == "back_to_menu")
+@dp.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.delete()
     await callback.message.answer("Главное меню:", reply_markup=main_menu())
     await callback.answer()
 
-# ================== АДМИНКА ==================
+# ================== АДМИН-ПАНЕЛЬ ==================
+
 @dp.message(Command("admin"))
 async def admin_panel(message: Message):
     if not is_admin(message.from_user.id):
@@ -434,26 +483,159 @@ async def admin_panel(message: Message):
         return
     await message.answer("👑 Админ-панель", reply_markup=admin_keyboard())
 
-@dp.callback_query(lambda c: c.data == "admin_bookings")
-async def show_bookings(callback: CallbackQuery):
+@dp.callback_query(F.data == "admin_bookings")
+async def show_bookings_list(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
         await callback.answer("Нет доступа", show_alert=True)
         return
     
     bookings = get_all_bookings()
+    admin_pages[callback.from_user.id] = 0
+    
     if not bookings:
         await callback.message.edit_text("📭 Записей пока нет.", reply_markup=admin_keyboard())
         await callback.answer()
         return
     
-    text = "📋 Все записи:\n\n"
-    for b in bookings[:5]:
-        text += f"#{b[0]} {b[1]} - {b[3]} {b[4]} {b[5]} ({b[6]})\n"
-    
-    await callback.message.edit_text(text, reply_markup=admin_keyboard())
+    await callback.message.edit_text(
+        "📋 **Список записей:**\n\nВыберите запись для управления:",
+        reply_markup=admin_bookings_keyboard(bookings, 0)
+    )
     await callback.answer()
 
-@dp.callback_query(lambda c: c.data == "admin_stats")
+@dp.callback_query(F.data.startswith("bookings_page_"))
+async def change_page(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
+    page = int(callback.data.replace("bookings_page_", ""))
+    admin_pages[callback.from_user.id] = page
+    
+    bookings = get_all_bookings()
+    
+    await callback.message.edit_text(
+        "📋 **Список записей:**\n\nВыберите запись для управления:",
+        reply_markup=admin_bookings_keyboard(bookings, page)
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("booking_view_"))
+async def view_booking(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
+    booking_id = int(callback.data.replace("booking_view_", ""))
+    
+    bookings = get_all_bookings()
+    booking = None
+    for b in bookings:
+        if b[0] == booking_id:
+            booking = b
+            break
+    
+    if not booking:
+        await callback.answer("Запись не найдена", show_alert=True)
+        return
+    
+    status_emoji = {
+        'pending': '⏳',
+        'confirmed': '✅',
+        'cancelled': '❌'
+    }.get(booking[6], '❓')
+    
+    text = (
+        f"🔹 **Запись #{booking[0]}**\n\n"
+        f"👤 **Клиент:** {booking[1]}\n"
+        f"📞 **Телефон:** {booking[2]}\n"
+        f"💇 **Услуга:** {booking[3]}\n"
+        f"📅 **Дата:** {booking[4]}\n"
+        f"⏰ **Время:** {booking[5]}\n"
+        f"📌 **Статус:** {status_emoji} {booking[6]}\n"
+    )
+    
+    await callback.message.edit_text(
+        text,
+        reply_markup=admin_booking_action_keyboard(booking_id, booking[6])
+    )
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("booking_confirm_"))
+async def confirm_booking_admin(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
+    booking_id = int(callback.data.replace("booking_confirm_", ""))
+    update_booking_status(booking_id, 'confirmed')
+    
+    bookings = get_all_bookings()
+    booking = None
+    for b in bookings:
+        if b[0] == booking_id:
+            booking = b
+            break
+    
+    if booking:
+        try:
+            await bot.send_message(
+                booking[7],
+                f"✅ **Запись подтверждена!**\n\n"
+                f"Ваша запись #{booking_id} подтверждена администратором.\n"
+                f"💇 Услуга: {booking[3]}\n"
+                f"📅 Дата: {booking[4]} в {booking[5]}\n\n"
+                f"Ждём вас!"
+            )
+        except:
+            pass
+    
+    await callback.answer("✅ Запись подтверждена", show_alert=True)
+    await view_booking(callback)
+
+@dp.callback_query(F.data.startswith("booking_cancel_"))
+async def cancel_booking_admin(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
+    booking_id = int(callback.data.replace("booking_cancel_", ""))
+    update_booking_status(booking_id, 'cancelled')
+    
+    bookings = get_all_bookings()
+    booking = None
+    for b in bookings:
+        if b[0] == booking_id:
+            booking = b
+            break
+    
+    if booking:
+        try:
+            await bot.send_message(
+                booking[7],
+                f"❌ **Запись отменена**\n\n"
+                f"Ваша запись #{booking_id} была отменена администратором.\n"
+                f"Пожалуйста, свяжитесь с нами для уточнения."
+            )
+        except:
+            pass
+    
+    await callback.answer("❌ Запись отменена", show_alert=True)
+    await view_booking(callback)
+
+@dp.callback_query(F.data.startswith("booking_delete_"))
+async def delete_booking_admin(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
+    booking_id = int(callback.data.replace("booking_delete_", ""))
+    delete_booking(booking_id)
+    
+    await callback.answer("🗑 Запись удалена из базы", show_alert=True)
+    await show_bookings_list(callback)
+
+@dp.callback_query(F.data == "admin_stats")
 async def show_stats_cmd(callback: CallbackQuery):
     if not is_admin(callback.from_user.id):
         await callback.answer("Нет доступа", show_alert=True)
@@ -461,18 +643,72 @@ async def show_stats_cmd(callback: CallbackQuery):
     
     stats = get_stats()
     text = (
-        f"📊 Статистика:\n\n"
-        f"👥 Пользователей: {stats['total_users']}\n"
-        f"📅 Записей: {stats['total_bookings']}\n"
-        f"✅ Подтверждено: {stats['confirmed_bookings']}\n"
+        "📊 **Статистика:**\n\n"
+        f"👥 Всего пользователей: {stats['total_users']}\n"
+        f"📅 Всего записей: {stats['total_bookings']}\n"
+        f"✅ Подтверждённых: {stats['confirmed_bookings']}\n"
         f"⏳ Ожидают: {stats['pending_bookings']}\n"
-        f"❌ Отменено: {stats['cancelled_bookings']}"
+        f"❌ Отменённых: {stats['cancelled_bookings']}"
     )
     await callback.message.edit_text(text, reply_markup=admin_keyboard())
     await callback.answer()
 
-@dp.callback_query(lambda c: c.data == "admin_back")
+@dp.callback_query(F.data == "admin_broadcast")
+async def start_broadcast(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
+    await state.set_state(BroadcastStates.waiting_for_message)
+    await callback.message.edit_text(
+        "📢 **Рассылка**\n\n"
+        "Введите сообщение для отправки всем пользователям:\n\n"
+        "⚠️ Отправьте /cancel чтобы отменить"
+    )
+    await callback.answer()
+
+@dp.message(BroadcastStates.waiting_for_message)
+async def send_broadcast(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        await state.clear()
+        return
+    
+    if message.text == "/cancel":
+        await state.clear()
+        await message.answer("❌ Рассылка отменена.")
+        return
+    
+    users = get_all_users()
+    
+    await message.answer(f"📨 Начинаю рассылку {len(users)} пользователям...")
+    
+    success = 0
+    failed = 0
+    
+    for user_id in users:
+        try:
+            await bot.send_message(
+                user_id,
+                f"📢 **Сообщение от администратора**\n\n{message.text}"
+            )
+            success += 1
+            await asyncio.sleep(0.05)
+        except:
+            failed += 1
+    
+    await state.clear()
+    await message.answer(
+        f"✅ Рассылка завершена!\n"
+        f"📨 Отправлено: {success}\n"
+        f"❌ Не удалось: {failed}"
+    )
+
+@dp.callback_query(F.data == "admin_back")
 async def back_to_admin(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+    
     await callback.message.edit_text("👑 Админ-панель", reply_markup=admin_keyboard())
     await callback.answer()
 
@@ -483,4 +719,7 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("👋 Бот остановлен")
