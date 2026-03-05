@@ -1,7 +1,38 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
+
+# ========== ОСНОВНАЯ КЛАВИАТУРА (ВСЕГДА ВНИЗУ) ==========
+
+def get_main_reply_keyboard():
+    """Постоянная клавиатура внизу экрана"""
+    keyboard = [
+        [KeyboardButton("💳 Купить план")],
+        [KeyboardButton("❓ Как оплатить"), KeyboardButton("📞 Поддержка")],
+        [KeyboardButton("📊 Статус")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard, 
+        resize_keyboard=True,
+        input_field_placeholder="Выбери действие..."
+    )
+
+def get_admin_reply_keyboard():
+    """Постоянная клавиатура для админа"""
+    keyboard = [
+        [KeyboardButton("📊 Статистика"), KeyboardButton("🖼 Чеки")],
+        [KeyboardButton("💬 Ответить"), KeyboardButton("📨 Рассылка")],
+        [KeyboardButton("👥 Пользователи")],
+        [KeyboardButton("🔙 Выход из админки")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        input_field_placeholder="Админ-панель"
+    )
+
+# ========== INLINE КЛАВИАТУРЫ (для сообщений) ==========
 
 def main_menu():
-    """Главное меню для пользователя"""
+    """Главное меню (inline)"""
     keyboard = [
         [InlineKeyboardButton("💳 Купить план за 50₽", callback_data='buy')],
         [InlineKeyboardButton("❓ Как оплатить", callback_data='how_to_pay')],
@@ -22,16 +53,41 @@ def paid_button():
         [InlineKeyboardButton("🔙 Назад", callback_data='back_to_main')]
     ])
 
-# ========== АДМИНСКИЕ КЛАВИАТУРЫ ==========
+# ========== АДМИНСКИЕ INLINE КЛАВИАТУРЫ ==========
 
 def admin_main_menu():
-    """Главное меню для админа"""
+    """Главное меню для админа (inline)"""
     keyboard = [
         [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton("🖼 Чеки на проверку", callback_data="admin_checks")],
         [InlineKeyboardButton("💬 Ответить пользователю", callback_data="admin_reply")],
         [InlineKeyboardButton("📨 Рассылка", callback_data="admin_broadcast")],
         [InlineKeyboardButton("👥 Активные чаты", callback_data="admin_chats")],
         [InlineKeyboardButton("🔄 Сохранить БД", callback_data="admin_save")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def admin_checks_keyboard(payments):
+    """Список чеков на проверку"""
+    keyboard = []
+    for payment_id, payment in payments.items():
+        btn_text = f"{payment_id} | {payment['first_name']} (@{payment['username']})"
+        keyboard.append([InlineKeyboardButton(btn_text, callback_data=f"check_{payment_id}")])
+    
+    if not payments:
+        keyboard.append([InlineKeyboardButton("✅ Нет чеков", callback_data="noop")])
+    
+    keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="admin_back")])
+    return InlineKeyboardMarkup(keyboard)
+
+def payment_action_keyboard(payment_id):
+    """Кнопки для конкретного чека"""
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Подтвердить", callback_data=f"approve_{payment_id}"),
+            InlineKeyboardButton("❌ Отказать", callback_data=f"reject_{payment_id}")
+        ],
+        [InlineKeyboardButton("🔙 К списку чеков", callback_data="admin_checks")]
     ]
     return InlineKeyboardMarkup(keyboard)
 

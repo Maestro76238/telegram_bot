@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import threading
-import asyncio
 from flask import Flask
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
@@ -36,7 +35,6 @@ def run_bot_main():
     """Запуск бота в главном потоке"""
     print("🤖 Создаем бота...")
     
-    # Создаем приложение бота
     bot_app = Application.builder().token(BOT_TOKEN).build()
     
     # Подключаем обработчики
@@ -50,13 +48,11 @@ def run_bot_main():
     print(f"🤖 Бот Mr. X запущен. Админ ID: {ADMIN_CHAT_ID}")
     print("🚀 Начинаем polling...")
     
-    # Запускаем бота (это блокирующий вызов)
     bot_app.run_polling()
 
 if __name__ == "__main__":
     print("🔥 Запуск Mr. X бота...")
     
-    # Проверяем наличие токена
     if not BOT_TOKEN:
         print("❌ ОШИБКА: BOT_TOKEN не задан!")
         exit(1)
