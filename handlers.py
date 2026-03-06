@@ -102,7 +102,7 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
     if text == "💳 Купить план":
         await update.message.reply_text(
             "💳 **Как оплатить:**\n\n"
-            "1. Переведи 50 рублей Юмани: `4100 1181 8046 2054`\n""
+            "1. Переведи 50 рублей Юмани: `4100 1181 8046 2054`\n"
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
