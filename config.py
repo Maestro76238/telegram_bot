@@ -32,7 +32,7 @@ except ValueError:
     sys.exit(1)
 
 # Путь к файлу с планом
-PDF_FILE_PATH = "plan.pdf"  # <--- УБЕДИСЬ, ЧТО ФАЙЛ НАЗЫВАЕТСЯ ИМЕННО ТАК
+PDF_FILE_PATH = "metod_mr_x.pdf"  # <--- УБЕДИСЬ, ЧТО ФАЙЛ НАЗЫВАЕТСЯ ИМЕННО ТАК
 
 # Цена
 PRICE = 50  # рублей
