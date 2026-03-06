@@ -46,6 +46,7 @@ def run_bot_main():
     bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
     print(f"🤖 Бот Mr. X запущен. Админ ID: {ADMIN_CHAT_ID}")
+    print(f"📢 Канал для подписки: @mr.X")
     print("🚀 Начинаем polling...")
     
     bot_app.run_polling()

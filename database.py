@@ -10,6 +10,7 @@ class Database:
         self.payments = {}            # Платежи {payment_id: {"user_id": id, "status": "pending/approved/rejected", "photo": "path", "date": "..."}}
         self.user_chats = {}           # Инфо о пользователях {id: {"name": "...", "last_seen": "..."}}
         self.payment_counter = 0       # Счетчик для ID платежей
+        self.template_downloads = {}   # Сколько раз скачали шаблон {user_id: count}
         self.load()
     
     def load(self):
@@ -22,6 +23,7 @@ class Database:
                     self.payments = data.get("payments", {})
                     self.payment_counter = data.get("payment_counter", 0)
                     self.user_chats = data.get("user_chats", {})
+                    self.template_downloads = data.get("template_downloads", {})
                 print(f"✅ База данных загружена. Продаж: {len(self.paid_users)}")
             except Exception as e:
                 print(f"⚠️ Ошибка загрузки БД: {e}")
@@ -29,6 +31,7 @@ class Database:
                 self.payments = {}
                 self.payment_counter = 0
                 self.user_chats = {}
+                self.template_downloads = {}
     
     def save(self):
         """Сохранить данные в файл"""
@@ -38,7 +41,8 @@ class Database:
                     "paid_users": list(self.paid_users),
                     "payments": self.payments,
                     "payment_counter": self.payment_counter,
-                    "user_chats": self.user_chats
+                    "user_chats": self.user_chats,
+                    "template_downloads": self.template_downloads
                 }, f, indent=2, ensure_ascii=False)
             return True
         except Exception as e:
@@ -101,11 +105,24 @@ class Database:
         """Проверил, покупал ли пользователь"""
         return user_id in self.paid_users
     
+    def increment_template_download(self, user_id):
+        """Увеличить счетчик скачиваний шаблона"""
+        user_id_str = str(user_id)
+        self.template_downloads[user_id_str] = self.template_downloads.get(user_id_str, 0) + 1
+        self.save()
+        return self.template_downloads[user_id_str]
+    
+    def get_template_downloads(self, user_id):
+        """Получить количество скачиваний шаблона"""
+        return self.template_downloads.get(str(user_id), 0)
+    
     def get_stats(self):
         """Получить статистику"""
         pending = len([p for p in self.payments.values() if p["status"] == "pending"])
         approved = len([p for p in self.payments.values() if p["status"] == "approved"])
         rejected = len([p for p in self.payments.values() if p["status"] == "rejected"])
+        
+        total_downloads = sum(self.template_downloads.values())
         
         return {
             "users": len(self.user_chats),
@@ -114,7 +131,8 @@ class Database:
             "pending": pending,
             "approved": approved,
             "rejected": rejected,
-            "total_payments": len(self.payments)
+            "total_payments": len(self.payments),
+            "template_downloads": total_downloads
         }
 
 # Создаем глобальный экземпляр базы данных

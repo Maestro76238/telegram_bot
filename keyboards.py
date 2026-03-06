@@ -7,7 +7,8 @@ def get_main_reply_keyboard():
     keyboard = [
         [KeyboardButton("💳 Купить план")],
         [KeyboardButton("❓ Как оплатить"), KeyboardButton("📞 Поддержка")],
-        [KeyboardButton("📊 Статус")]
+        [KeyboardButton("📊 Статус")],
+        [KeyboardButton("📄 Шаблон заявления")]  # КНОПКА ДЛЯ ШАБЛОНА
     ]
     return ReplyKeyboardMarkup(
         keyboard, 
@@ -36,7 +37,8 @@ def main_menu():
     keyboard = [
         [InlineKeyboardButton("💳 Купить план за 50₽", callback_data='buy')],
         [InlineKeyboardButton("❓ Как оплатить", callback_data='how_to_pay')],
-        [InlineKeyboardButton("📞 Поддержка", callback_data='support')]
+        [InlineKeyboardButton("📞 Поддержка", callback_data='support')],
+        [InlineKeyboardButton("📄 Шаблон заявления", callback_data='template')]  # КНОПКА ДЛЯ ШАБЛОНА
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -52,6 +54,25 @@ def paid_button():
         [InlineKeyboardButton("✅ Я оплатил", callback_data="paid")],
         [InlineKeyboardButton("🔙 Назад", callback_data='back_to_main')]
     ])
+
+# ========== КНОПКИ ДЛЯ ШАБЛОНА ==========
+
+def subscription_check_keyboard():
+    """Кнопки для проверки подписки на канал"""
+    keyboard = [
+        [InlineKeyboardButton("✅ Я подписался", callback_data="check_sub_after")],
+        [InlineKeyboardButton("🔙 Назад", callback_data='back_to_main')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def subscription_link_keyboard(channel_link):
+    """Кнопка с ссылкой на канал"""
+    keyboard = [
+        [InlineKeyboardButton("📢 Подписаться на канал", url=channel_link)],
+        [InlineKeyboardButton("✅ Я подписался", callback_data="check_sub_after")],
+        [InlineKeyboardButton("🔙 Назад", callback_data='back_to_main')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 # ========== АДМИНСКИЕ INLINE КЛАВИАТУРЫ ==========
 

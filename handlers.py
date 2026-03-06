@@ -1,12 +1,23 @@
 import os
 import asyncio
 from datetime import datetime
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 
-from config import ADMIN_CHAT_ID, PDF_FILE_PATH
+from config import ADMIN_CHAT_ID, PDF_FILE_PATH, TEMPLATE_FILE_PATH, CHANNEL_LINK, CHANNEL_ID
 from database import db
 from keyboards import *
+
+# ========== ФУНКЦИЯ ПРОВЕРКИ ПОДПИСКИ ==========
+
+async def check_subscription(user_id, context):
+    """Проверяет, подписан ли пользователь на канал"""
+    try:
+        member = await context.bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        return member.status in ['member', 'administrator', 'creator']
+    except Exception as e:
+        print(f"Ошибка проверки подписки: {e}")
+        return False
 
 # ========== ОБЩИЕ ОБРАБОТЧИКИ ==========
 
@@ -21,7 +32,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(
         "Тот самый парень, который вылез из 2 млн долгов в 19 лет.\n\n"
-        "📘 Здесь ты можешь купить мой пошаговый план за 50 рублей.",
+        "📘 Здесь ты можешь купить мой пошаговый план за 50 рублей.\n"
+        "📄 А ещё есть бесплатный шаблон заявления в МФО (нужна подписка на канал @mr.X).",
         reply_markup=get_main_reply_keyboard()
     )
 
@@ -42,7 +54,8 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
                 f"🖼 **Чеки:**\n"
                 f"⏳ Ожидают: {stats['pending']}\n"
                 f"✅ Одобрено: {stats['approved']}\n"
-                f"❌ Отказано: {stats['rejected']}",
+                f"❌ Отказано: {stats['rejected']}\n\n"
+                f"📄 Скачиваний шаблона: {stats['template_downloads']}",
                 parse_mode='Markdown'
             )
             return
@@ -102,7 +115,8 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
     if text == "💳 Купить план":
         await update.message.reply_text(
             "💳 **Как оплатить:**\n\n"
-            "1. Переведи 50 рублей Юмани: `4100 1181 8046 2054`\n"
+            "1. Переведи 50 рублей на Юмани: `4100 1181 8046 2054`\n"
+            "   Получатель: Михаил А.\n"
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
@@ -129,6 +143,39 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
             await update.message.reply_text("✅ Ты уже купил план! Спасибо!")
         else:
             await update.message.reply_text("⏳ Ты еще не покупал план. Хочешь купить?", reply_markup=main_menu())
+    
+    elif text == "📄 Шаблон заявления":
+        is_subscribed = await check_subscription(user.id, context)
+        
+        if is_subscribed:
+            # Проверяем, есть ли файл
+            if not os.path.exists(TEMPLATE_FILE_PATH):
+                await update.message.reply_text("❌ Шаблон временно недоступен. Попробуй позже.")
+                return
+            
+            # Отправляем файл
+            try:
+                with open(TEMPLATE_FILE_PATH, 'rb') as f:
+                    await update.message.reply_document(
+                        document=f,
+                        filename="zayavlenie_mfo.pdf",
+                        caption="📄 **Шаблон заявления на возврат переплат в МФО**\n\n"
+                                "Заполни, распечатай и отправь в МФО заказным письмом.\n"
+                                "Если помогло — расскажи друзьям."
+                    )
+                db.increment_template_download(user.id)
+            except Exception as e:
+                await update.message.reply_text(f"❌ Ошибка при отправке: {e}")
+        else:
+            # Если не подписан
+            await update.message.reply_text(
+                "🔒 **Доступ к шаблону только для подписчиков канала**\n\n"
+                "Подпишись на канал @mr.X, чтобы получить шаблон:\n"
+                f"{CHANNEL_LINK}\n\n"
+                "После подписки нажми 'Я подписался'",
+                parse_mode='Markdown',
+                reply_markup=subscription_link_keyboard(CHANNEL_LINK)
+            )
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка всех нажатий на inline кнопки"""
@@ -149,7 +196,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"⏳ Ожидают: {stats['pending']}\n"
                     f"✅ Одобрено: {stats['approved']}\n"
                     f"❌ Отказано: {stats['rejected']}\n"
-                    f"📦 Всего платежей: {stats['total_payments']}")
+                    f"📦 Всего платежей: {stats['total_payments']}\n\n"
+                    f"📄 Скачиваний шаблона: {stats['template_downloads']}")
             await query.edit_message_text(text, parse_mode='Markdown', reply_markup=admin_main_menu())
             return
         
@@ -286,7 +334,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == 'buy':
         await query.edit_message_text(
             "💳 **Как оплатить:**\n\n"
-            "1. Переведи 50 рублей Юмани `4100 1181 8046 2054`\n"
+            "1. Переведи 50 рублей на Юмани: `4100 1181 8046 2054`\n"
+            "   Получатель: Михаил А.\n"
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
@@ -315,6 +364,63 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=back_button()
         )
     
+    elif query.data == 'template':
+        is_subscribed = await check_subscription(user.id, context)
+        
+        if is_subscribed:
+            if not os.path.exists(TEMPLATE_FILE_PATH):
+                await query.edit_message_text("❌ Шаблон временно недоступен. Попробуй позже.")
+                return
+            
+            try:
+                with open(TEMPLATE_FILE_PATH, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=user.id,
+                        document=f,
+                        filename="zayavlenie_mfo.pdf",
+                        caption="📄 **Шаблон заявления на возврат переплат в МФО**\n\n"
+                                "Заполни, распечатай и отправь в МФО заказным письмом или на их электронную почту."
+                    )
+                db.increment_template_download(user.id)
+                await query.edit_message_text("✅ Шаблон отправлен! Проверь личные сообщения.")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
+        else:
+            await query.edit_message_text(
+                "🔒 **Доступ к шаблону только для подписчиков канала**\n\n"
+                f"Подпишись на канал @mr.X: {CHANNEL_LINK}\n\n"
+                "После подписки нажми кнопку ниже:",
+                parse_mode='Markdown',
+                reply_markup=subscription_check_keyboard()
+            )
+    
+    elif query.data == "check_sub_after":
+        is_subscribed = await check_subscription(user.id, context)
+        
+        if is_subscribed:
+            if not os.path.exists(TEMPLATE_FILE_PATH):
+                await query.edit_message_text("❌ Шаблон временно недоступен. Попробуй позже.")
+                return
+            
+            try:
+                with open(TEMPLATE_FILE_PATH, 'rb') as f:
+                    await context.bot.send_document(
+                        chat_id=user.id,
+                        document=f,
+                        filename="zayavlenie_mfo.pdf",
+                        caption="📄 **Шаблон заявления на возврат переплат в МФО**\n\n"
+                                "Заполни, распечатай и отправь в МФО заказным письмом."
+                    )
+                db.increment_template_download(user.id)
+                await query.edit_message_text("✅ Шаблон отправлен! Проверь личные сообщения.")
+            except Exception as e:
+                await query.edit_message_text(f"❌ Ошибка: {e}")
+        else:
+            await query.edit_message_text(
+                "❌ Ты ещё не подписался. Подпишись на канал @mr.X и нажми кнопку снова:",
+                reply_markup=subscription_link_keyboard(CHANNEL_LINK)
+            )
+    
     elif query.data == 'back_to_main':
         await query.edit_message_text("Главное меню:", reply_markup=main_menu())
 
@@ -324,7 +430,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     
     # Сначала проверяем, может это кнопка с нижней клавиатуры
-    if text in ["💳 Купить план", "❓ Как оплатить", "📞 Поддержка", "📊 Статус",
+    if text in ["💳 Купить план", "❓ Как оплатить", "📞 Поддержка", "📊 Статус", "📄 Шаблон заявления",
                 "📊 Статистика", "🖼 Чеки", "💬 Ответить", "📨 Рассылка", "👥 Пользователи", "🔙 Выход из админки"]:
         await handle_reply_buttons(update, context)
         return
@@ -471,7 +577,8 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👥 Пользователей: {stats['users']}\n"
             f"✅ Продаж: {stats['sales']}\n"
             f"💰 Выручка: {stats['revenue']} руб.\n"
-            f"🖼 Чеков ожидает: {stats['pending']}\n\n"
+            f"🖼 Чеков ожидает: {stats['pending']}\n"
+            f"📄 Скачиваний шаблона: {stats['template_downloads']}\n\n"
             f"Выбери действие:")
     
     await update.message.reply_text(
