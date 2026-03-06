@@ -102,8 +102,7 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
     if text == "💳 Купить план":
         await update.message.reply_text(
             "💳 **Как оплатить:**\n\n"
-            "1. Переведи 50 рублей на карту Сбера: `2200 0000 0000 0000`\n"
-            "   Получатель: Михаил А.\n"
+            "1. Переведи 50 рублей Юмани: `4100 1181 8046 2054`\n""
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
@@ -113,8 +112,7 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
     elif text == "❓ Как оплатить":
         await update.message.reply_text(
             "💳 **Способы оплаты:**\n\n"
-            "• **СБЕР**: `2200 0000 0000 0000`\n"
-            "• **ЮMoney**: `4100 0000 0000 0000`\n\n"
+            "• **ЮMoney**: `4100 1181 8046 2054`\n\n"
             "После перевода нажми 'Купить' → 'Я оплатил' и отправь скриншот.",
             parse_mode='Markdown',
             reply_markup=back_button()
@@ -288,8 +286,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == 'buy':
         await query.edit_message_text(
             "💳 **Как оплатить:**\n\n"
-            "1. Переведи 50 рублей на карту Сбера: `2200 0000 0000 0000`\n"
-            "   Получатель: Михаил А.\n"
+            "1. Переведи 50 рублей Юмани `4100 1181 8046 2054`\n"
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
@@ -306,8 +303,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == 'how_to_pay':
         await query.edit_message_text(
             "💳 **Способы оплаты:**\n\n"
-            "• **СБЕР**: `2200 0000 0000 0000`\n"
-            "• **ЮMoney**: `4100 0000 0000 0000`\n\n"
+            "• **ЮMoney**: `4100 1181 8046 2054`\n\n"
             "После перевода нажми 'Купить' → 'Я оплатил' и отправь скриншот.",
             parse_mode='Markdown',
             reply_markup=back_button()
