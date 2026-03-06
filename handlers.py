@@ -116,7 +116,6 @@ async def handle_reply_buttons(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(
             "💳 **Как оплатить:**\n\n"
             "1. Переведи 50 рублей на Юмани: `4100 1181 8046 2054`\n"
-            "   Получатель: Михаил А.\n"
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
@@ -335,7 +334,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "💳 **Как оплатить:**\n\n"
             "1. Переведи 50 рублей на Юмани: `4100 1181 8046 2054`\n"
-            "   Получатель: Михаил А.\n"
             "2. Нажми 'Я оплатил'\n"
             "3. Отправь скриншот",
             parse_mode='Markdown',
