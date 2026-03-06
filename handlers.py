@@ -390,7 +390,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "🔒 **Доступ к шаблону только для подписчиков канала**\n\n"
                 f"Подпишись на канал @mr.X: {CHANNEL_LINK}\n\n"
                 "После подписки нажми кнопку ниже:",
-                parse_mode='Markdown',
                 reply_markup=subscription_check_keyboard()
             )
     
